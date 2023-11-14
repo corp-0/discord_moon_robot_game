@@ -1,0 +1,16 @@
+[tool.poetry]
+name = "robot-game"
+version = "0.1.0"
+description = "a game about a robot and programming tasks"
+authors = ["Gilles <43683714+corp-0@users.noreply.github.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.11"
+"discord.py" = "^2.3.2"
+cogwatch = "^3.3.1"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

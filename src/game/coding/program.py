@@ -1,3 +1,4 @@
+import random
 import re
 from dataclasses import dataclass
 
@@ -11,7 +12,7 @@ from discord.ext.commands import Context
 class ProgramResults:
     success: bool
     steps: int
-    executed_lines: int
+    duration: int
     error: str | None = None
 
 
@@ -64,8 +65,8 @@ class ParsedLine:
 class Program:
     commands: dict[int, Command] = {}
     pc: int | None = 0
-    executed_lines_amount: int = 0
-    MAX_AMOUNT_OF_LINES: int = 1000
+    duration: int = 0
+    MAX_DURATION: int = 1000
     finished_execution_event: AsyncEvent = AsyncEvent()
     results: ProgramResults | None = None
     context: Context | None = None
@@ -74,20 +75,41 @@ class Program:
         self.context = ctx
         self.commands = {source.line_number: source.command for source in source_code}
         self.pc = min(self.commands.keys())
-        self.executed_lines_amount = 0
+        self.duration = 0
 
-    def set_results(self, success: bool, steps: int, executed_lines: int, error: str | None = None):
-        self.results = ProgramResults(success, steps, executed_lines, error)
+    def set_results(self, success: bool, steps: int, duration: int, error: str | None = None):
+        self.results = ProgramResults(success, steps, duration, error)
 
-    async def execute(self, game: RobotGame):
+    async def execute(self, game: RobotGame, ctx: Context):
         print(f"Starting execution of program {game.discord_user_id}@{game.challenge_name}")
         while True:
-            if self.executed_lines_amount >= self.MAX_AMOUNT_OF_LINES:
+            if self.duration >= self.MAX_DURATION:
+                if random.random() > 0.5:
+                    resource = random.choice((
+                        "energy",
+                        "power",
+                        "batteries",
+                    ))
+                    last_message = random.choice((
+                        "My battery is low and it's getting dark.",
+                        "For a moment, nothing happened. Then, after a second or so, nothing continued to happen.",
+                        "When a robot dies, you don't have to write a letter to its mother.",
+                    ))
+                else:
+                    resource = "time"
+                    last_message = random.choice((
+                        f"I'm afraid I can't do that, {ctx.author.display_name}.",
+                        f"I'm sorry {ctx.author.display_name}, I'm afraid I can't do that.",
+                        "Does this unit have a soul?",
+                        "End of line.",
+                        "I sense injuries. The data could be called pain.",
+                    ))
+
                 self.set_results(
                     False,
                     len(self.commands),
-                    self.executed_lines_amount,
-                    "Robot ran out of memory and exploded."
+                    self.duration,
+                    f"Robot ran out of {resource}. Last transmitted message: {last_message}"
                 )
                 break
 
@@ -95,12 +117,12 @@ class Program:
             print(f"Executing command: {command} at line {self.pc}")
             results: CommandResults = command.execute(game)
             print(f"Should we jump next pc? {f'jump to {results.next_pc}' if results.should_jump_pc else 'No'}")
-            self.executed_lines_amount += 1
+            self.duration += 1
 
             if results.should_terminate_program:
                 print(f"Command {command} failed after execution. Terminating program.")
                 print(f"Error: {results.error}")
-                self.set_results(False, len(self.commands), self.executed_lines_amount, results.error)
+                self.set_results(False, len(self.commands), self.duration, results.error)
                 break
 
             if results.should_jump_pc:
@@ -108,7 +130,7 @@ class Program:
                     self.set_results(
                         False,
                         len(self.commands),
-                        self.executed_lines_amount,
+                        self.duration,
                         f"Attempted to jump to non-existent line {results.next_pc}")
                     break
 
@@ -123,10 +145,10 @@ class Program:
                     print(f"Command {command} executed. No more commands to execute.")
                     if game.is_a_win:
                         print("The robot performed all the required tasks.")
-                        self.set_results(True, len(self.commands), self.executed_lines_amount)
+                        self.set_results(True, len(self.commands), self.duration)
                     else:
                         print("The robot didn't perform all the required tasks.")
-                        self.set_results(False, len(self.commands), self.executed_lines_amount,
+                        self.set_results(False, len(self.commands), self.duration,
                                          "The robot didn't perform all the required tasks.")
                     break
 

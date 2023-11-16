@@ -13,7 +13,7 @@ async def on_finished_execution(program: Program, ctx: commands.Context):
             f"──────────────────────────\n"
             f"🔥 **Challenge Solved!** 🔥\n"
             f"👣 Steps: {program.results.steps}\n"
-            f"📝 Executed Lines: {program.results.executed_lines}\n"
+            f"⌛ Duration: {program.results.duration}\n"
             f"──────────────────────────"
         )
     else:
@@ -22,7 +22,7 @@ async def on_finished_execution(program: Program, ctx: commands.Context):
             f"──────────────────────────\n"
             f"🔍 **Challenge Attempt** 🔍\n"
             f"👣 Steps: {program.results.steps}\n"
-            f"📝 Executed Lines: {program.results.executed_lines}\n"
+            f"⌛ Duration: {program.results.duration}\n"
             f"❌ Error: {program.results.error}\n"
             f"──────────────────────────"
         )
@@ -38,9 +38,8 @@ class Challenges(commands.Cog):
                             name: str = commands.param(description="str: Name of the challenge"),
                             *challenge_string_rows: str
                             ):
-        """
-            Create a new challenge for others to play.
-        """
+        """Create a new challenge for others to play."""
+
         challenge_string = "\n".join(challenge_string_rows)
         await ctx.send(f"Adding challenge {name}")
         challenge = RobotChallenge(name, challenge_string)
@@ -53,6 +52,7 @@ class Challenges(commands.Cog):
     @commands.command(name="list-challenges")
     async def get_available_challenges(self, ctx: commands.Context):
         """What challenges are available?"""
+
         all_challenges: list[RobotChallenge] = self.bot.challenges
         challenges_message = "\n".join(
             [f"{idx}. {challenge.name}:\n{challenge.initial_map}" for idx, challenge in enumerate(all_challenges)])
@@ -68,6 +68,7 @@ class Challenges(commands.Cog):
     @commands.command(name="solve")
     async def solve_challenge(self, ctx: commands.Context, *, args):
         """Attempt to solve a challenge"""
+
         challenge_name = args.split("\n")[0].strip()
         code = "\n".join(args.split("\n")[1:]).strip()
         challenge = next((challenge for challenge in self.bot.challenges if challenge.name == challenge_name), None)
@@ -87,7 +88,7 @@ class Challenges(commands.Cog):
         program = Program(parser.parse(), ctx)
         print(f"Program: {program}")
         program.finished_execution_event.subscribe(on_finished_execution)
-        await program.execute(game)
+        await program.execute(game, ctx)
 
 
 async def setup(bot: RobotBot):
